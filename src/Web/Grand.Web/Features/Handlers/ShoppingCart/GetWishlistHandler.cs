@@ -119,7 +119,7 @@ namespace Grand.Web.Features.Handlers.ShoppingCart
             foreach (var sci in request.Cart)
             {
                 var product = await _productService.GetProductById(sci.ProductId);
-                if (!_aclService.Authorize(product, request.Customer))
+                if (product == null)
                     continue;
 
                 var sename = product.GetSeName(request.Language.Id);
@@ -135,7 +135,7 @@ namespace Grand.Web.Features.Handlers.ShoppingCart
                     AttributeInfo = await _productAttributeFormatter.FormatAttributes(product, sci.Attributes),
                 };
 
-                cartItemModel.AllowItemEditing = _shoppingCartSettings.AllowCartItemEditing && product.ProductTypeId == ProductType.SimpleProduct && (!String.IsNullOrEmpty(cartItemModel.AttributeInfo) || product.IsGiftVoucher) && product.VisibleIndividually;
+                cartItemModel.AllowItemEditing = _shoppingCartSettings.AllowCartItemEditing && product.VisibleIndividually; 
 
                 //allowed quantities
                 var allowedQuantities = product.ParseAllowedQuantities();
@@ -151,7 +151,10 @@ namespace Grand.Web.Features.Handlers.ShoppingCart
 
                 //recurring info
                 if (product.IsRecurring)
-                    cartItemModel.RecurringInfo = string.Format(_translationService.GetResource("ShoppingCart.RecurringPeriod"), product.RecurringCycleLength, product.RecurringCyclePeriodId.GetTranslationEnum(_translationService, request.Language.Id));
+                    cartItemModel.RecurringInfo = string.Format(_translationService.GetResource("ShoppingCart.RecurringPeriod"), 
+                                                                product.RecurringCycleLength, 
+                                                                product.RecurringCyclePeriodId.GetTranslationEnum(_translationService, request.Language.Id),
+                                                                product.RecurringTotalCycles);
 
                 //unit prices
                 if (product.CallForPrice)

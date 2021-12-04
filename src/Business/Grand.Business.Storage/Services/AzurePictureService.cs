@@ -1,17 +1,15 @@
 ﻿using Azure.Storage.Blobs;
+using Grand.Business.Common.Interfaces.Logging;
+using Grand.Business.Storage.Interfaces;
+using Grand.Domain.Data;
+using Grand.Domain.Media;
 using Grand.Infrastructure;
 using Grand.Infrastructure.Caching;
 using Grand.Infrastructure.Configuration;
-using Grand.Domain.Data;
-using Grand.Domain.Media;
 using MediatR;
-using Microsoft.AspNetCore.Hosting;
 using System;
-using System.Diagnostics;
 using System.IO;
 using System.Threading.Tasks;
-using Grand.Business.Common.Interfaces.Logging;
-using Grand.Business.Storage.Interfaces;
 
 namespace Grand.Business.Storage.Services
 {
@@ -32,20 +30,20 @@ namespace Grand.Business.Storage.Services
         public AzurePictureService(IRepository<Picture> pictureRepository,
             ILogger logger,
             IMediator mediator,
-            IWebHostEnvironment hostingEnvironment,
             IWorkContext workContext,
             ICacheBase cacheBase,
             IMediaFileStore mediaFileStore,
             MediaSettings mediaSettings,
+            StorageSettings storageSettings,
             AppConfig config)
             : base(pictureRepository,
                 logger,
                 mediator,
-                hostingEnvironment,
                 workContext,
                 cacheBase,
                 mediaFileStore,
-                mediaSettings)
+                mediaSettings,
+                storageSettings)
         {
             _config = config;
 

@@ -9,9 +9,9 @@ namespace Grand.Business.Messages.DotLiquidDrops
 {
     public partial class LiquidStore : Drop
     {
-        private Store _store;
-        private EmailAccount _emailAccount;
-        private Language _language;
+        private readonly Store _store;
+        private readonly EmailAccount _emailAccount;
+        private readonly Language _language;
 
         public LiquidStore(Store store, Language language, EmailAccount emailAccount = null)
         {
@@ -67,9 +67,26 @@ namespace Grand.Business.Messages.DotLiquidDrops
             get { return _store.CompanyHours; }
         }
 
+        public string CompanyRegNo {
+            get { return _store.CompanyRegNo; }
+        }
+
         public string CompanyVat
         {
             get { return _store.CompanyVat; }
+        }
+
+        public string BankCode {
+            get { return _store.BankAccount?.BankCode; }
+        }
+        public string BankName {
+            get { return _store.BankAccount?.BankName; }
+        }
+        public string SwiftCode {
+            get { return _store.BankAccount?.SwiftCode; }
+        }
+        public string AccountNumber {
+            get { return _store.BankAccount?.AccountNumber; }
         }
 
         public string TwitterLink { get; set; }

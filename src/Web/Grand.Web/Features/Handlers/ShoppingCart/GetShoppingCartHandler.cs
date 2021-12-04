@@ -180,8 +180,7 @@ namespace Grand.Web.Features.Handlers.ShoppingCart
             }
             else
             {
-                var minOrderSubtotalAmountOk = await _mediator.Send(new ValidateMinShoppingCartSubtotalAmountCommand()
-                {
+                var minOrderSubtotalAmountOk = await _mediator.Send(new ValidateMinShoppingCartSubtotalAmountCommand() {
                     Customer = request.Customer,
                     Cart = request.Cart.Where(x => x.ShoppingCartTypeId == ShoppingCartType.ShoppingCart || x.ShoppingCartTypeId == ShoppingCartType.Auctions).ToList()
                 });
@@ -203,8 +202,7 @@ namespace Grand.Web.Features.Handlers.ShoppingCart
                     discount.RequiresCouponCode &&
                     (await _discountService.ValidateDiscount(discount, request.Customer, request.Currency)).IsValid)
                 {
-                    model.DiscountBox.AppliedDiscountsWithCodes.Add(new ShoppingCartModel.DiscountBoxModel.DiscountInfoModel()
-                    {
+                    model.DiscountBox.AppliedDiscountsWithCodes.Add(new ShoppingCartModel.DiscountBoxModel.DiscountInfoModel() {
                         Id = discount.Id,
                         CouponCode = couponCode
                     });
@@ -228,8 +226,7 @@ namespace Grand.Web.Features.Handlers.ShoppingCart
             var checkoutAttributes = await _checkoutAttributeService.GetAllCheckoutAttributes(request.Store.Id, !request.Cart.RequiresShipping());
             foreach (var attribute in checkoutAttributes)
             {
-                var attributeModel = new ShoppingCartModel.CheckoutAttributeModel
-                {
+                var attributeModel = new ShoppingCartModel.CheckoutAttributeModel {
                     Id = attribute.Id,
                     Name = attribute.GetTranslation(x => x.Name, request.Language.Id),
                     TextPrompt = attribute.GetTranslation(x => x.TextPrompt, request.Language.Id),
@@ -250,8 +247,7 @@ namespace Grand.Web.Features.Handlers.ShoppingCart
                     var attributeValues = attribute.CheckoutAttributeValues;
                     foreach (var attributeValue in attributeValues)
                     {
-                        var attributeValueModel = new ShoppingCartModel.CheckoutAttributeValueModel
-                        {
+                        var attributeValueModel = new ShoppingCartModel.CheckoutAttributeValueModel {
                             Id = attributeValue.Id,
                             Name = attributeValue.GetTranslation(x => x.Name, request.Language.Id),
                             ColorSquaresRgb = attributeValue.ColorSquaresRgb,
@@ -305,33 +301,13 @@ namespace Grand.Web.Features.Handlers.ShoppingCart
                         break;
                     case AttributeControlType.TextBox:
                     case AttributeControlType.MultilineTextbox:
+                    case AttributeControlType.Datepicker:
                         {
                             if (selectedCheckoutAttributes != null && selectedCheckoutAttributes.Any())
                             {
                                 var enteredText = selectedCheckoutAttributes.Where(x => x.Key == attribute.Id).Select(x => x.Value).ToList();
                                 if (enteredText.Any())
                                     attributeModel.DefaultValue = enteredText[0];
-                            }
-                        }
-                        break;
-                    case AttributeControlType.Datepicker:
-                        {
-                            if (selectedCheckoutAttributes != null && selectedCheckoutAttributes.Any())
-                            {
-                                //keep in mind my that the code below works only in the current culture
-                                var selectedDateStr = selectedCheckoutAttributes.Where(x => x.Key == attribute.Id).Select(x => x.Value).ToList();
-                                if (selectedDateStr.Any())
-                                {
-                                    DateTime selectedDate;
-                                    if (DateTime.TryParseExact(selectedDateStr[0], "D", CultureInfo.CurrentCulture,
-                                                           DateTimeStyles.None, out selectedDate))
-                                    {
-                                        //successfully parsed
-                                        attributeModel.SelectedDay = selectedDate.Day;
-                                        attributeModel.SelectedMonth = selectedDate.Month;
-                                        attributeModel.SelectedYear = selectedDate.Year;
-                                    }
-                                }
                             }
                         }
                         break;
@@ -367,8 +343,7 @@ namespace Grand.Web.Features.Handlers.ShoppingCart
                 if (product == null)
                     continue;
                 var sename = product.GetSeName(request.Language.Id);
-                var cartItemModel = new ShoppingCartModel.ShoppingCartItemModel
-                {
+                var cartItemModel = new ShoppingCartModel.ShoppingCartItemModel {
                     Id = sci.Id,
                     Sku = product.FormatSku(sci.Attributes, _productAttributeParser),
                     IsCart = sci.ShoppingCartTypeId == ShoppingCartType.ShoppingCart,
@@ -381,10 +356,7 @@ namespace Grand.Web.Features.Handlers.ShoppingCart
                     AttributeInfo = await _productAttributeFormatter.FormatAttributes(product, sci.Attributes),
                 };
 
-                cartItemModel.AllowItemEditing = _shoppingCartSettings.AllowCartItemEditing &&
-                    product.ProductTypeId == ProductType.SimpleProduct &&
-                    (!String.IsNullOrEmpty(cartItemModel.AttributeInfo) || product.IsGiftVoucher) &&
-                    product.VisibleIndividually;
+                cartItemModel.AllowItemEditing = _shoppingCartSettings.AllowCartItemEditing && product.VisibleIndividually;
 
                 if (product.RequireOtherProducts)
                     cartItemModel.DisableRemoval = product.RequireOtherProducts && product.ParseRequiredProductIds().Intersect(request.Cart.Select(x => x.ProductId)).Any();
@@ -408,8 +380,7 @@ namespace Grand.Web.Features.Handlers.ShoppingCart
                 var allowedQuantities = product.ParseAllowedQuantities();
                 foreach (var qty in allowedQuantities)
                 {
-                    cartItemModel.AllowedQuantities.Add(new SelectListItem
-                    {
+                    cartItemModel.AllowedQuantities.Add(new SelectListItem {
                         Text = qty.ToString(),
                         Value = qty.ToString(),
                         Selected = sci.Quantity == qty
@@ -418,7 +389,10 @@ namespace Grand.Web.Features.Handlers.ShoppingCart
 
                 //recurring info
                 if (product.IsRecurring)
-                    cartItemModel.RecurringInfo = string.Format(_translationService.GetResource("ShoppingCart.RecurringPeriod"), product.RecurringCycleLength, product.RecurringCyclePeriodId.GetTranslationEnum(_translationService, request.Language.Id));
+                    cartItemModel.RecurringInfo = string.Format(_translationService.GetResource("ShoppingCart.RecurringPeriod"), 
+                                                                product.RecurringCycleLength, 
+                                                                product.RecurringCyclePeriodId.GetTranslationEnum(_translationService, request.Language.Id),
+                                                                product.RecurringTotalCycles);
 
                 //reservation info
                 if (product.ProductTypeId == ProductType.Reservation)
@@ -527,8 +501,7 @@ namespace Grand.Web.Features.Handlers.ShoppingCart
                 //billing info
                 var billingAddress = request.Customer.BillingAddress;
                 if (billingAddress != null)
-                    model.OrderReviewData.BillingAddress = await _mediator.Send(new GetAddressModel()
-                    {
+                    model.OrderReviewData.BillingAddress = await _mediator.Send(new GetAddressModel() {
                         Language = request.Language,
                         Address = billingAddress,
                         ExcludeProperties = false,
@@ -546,8 +519,7 @@ namespace Grand.Web.Features.Handlers.ShoppingCart
                     {
                         var shippingAddress = request.Customer.ShippingAddress;
                         if (shippingAddress != null)
-                            model.OrderReviewData.ShippingAddress = await _mediator.Send(new GetAddressModel()
-                            {
+                            model.OrderReviewData.ShippingAddress = await _mediator.Send(new GetAddressModel() {
                                 Language = request.Language,
                                 Address = shippingAddress,
                                 ExcludeProperties = false,
@@ -559,8 +531,7 @@ namespace Grand.Web.Features.Handlers.ShoppingCart
                         if (pickup != null)
                         {
                             var country = await _countryService.GetCountryById(pickup.Address.CountryId);
-                            model.OrderReviewData.PickupAddress = new AddressModel
-                            {
+                            model.OrderReviewData.PickupAddress = new AddressModel {
                                 Address1 = pickup.Address.Address1,
                                 City = pickup.Address.City,
                                 CountryName = country != null ? country.Name : string.Empty,
@@ -589,8 +560,7 @@ namespace Grand.Web.Features.Handlers.ShoppingCart
         private async Task<PictureModel> PrepareCartItemPicture(Product product, IList<CustomAttribute> attributes)
         {
             var sciPicture = await product.GetProductPicture(attributes, _productService, _pictureService, _productAttributeParser);
-            return new PictureModel
-            {
+            return new PictureModel {
                 Id = sciPicture?.Id,
                 ImageUrl = await _pictureService.GetPictureUrl(sciPicture, _mediaSettings.CartThumbPictureSize, true),
                 Title = string.Format(_translationService.GetResource("Media.Product.ImageLinkTitleFormat"), product.Name),

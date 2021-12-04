@@ -79,7 +79,7 @@ namespace Grand.Business.Storage.Services
                         .Select(f =>
                         {
                             var fileSystemInfo = new PhysicalDirectoryInfo(new DirectoryInfo(f));
-                            var fileRelativePath = f.Substring(_fileSystemPath.Length);
+                            var fileRelativePath =  f[_fileSystemPath.Length..];
                             var filePath = this.NormalizePath(fileRelativePath);
                             return new FileSystemStoreEntry(filePath, fileSystemInfo);
                         }));
@@ -92,7 +92,7 @@ namespace Grand.Business.Storage.Services
                     .Select(f =>
                     {
                         var fileSystemInfo = new PhysicalFileInfo(new FileInfo(f));
-                        var fileRelativePath = f.Substring(_fileSystemPath.Length);
+                        var fileRelativePath = f[_fileSystemPath.Length..];
                         var filePath = this.NormalizePath(fileRelativePath);
                         return new FileSystemStoreEntry(filePath, fileSystemInfo);
                     }));
@@ -299,6 +299,9 @@ namespace Grand.Business.Storage.Services
         {
             var physicalPath = GetPhysicalPath(path);
 
+            if (!File.Exists(physicalPath))
+                File.Create(physicalPath).Close();
+
             return File.WriteAllTextAsync(physicalPath, text, Encoding.UTF8);
         }
 
@@ -313,7 +316,7 @@ namespace Grand.Business.Storage.Services
         {
             path = this.NormalizePath(path);
 
-            var physicalPath = String.IsNullOrEmpty(path) ? _fileSystemPath : Path.Combine(_fileSystemPath, path);
+            var physicalPath = string.IsNullOrEmpty(path) ? _fileSystemPath : Path.Combine(_fileSystemPath, path);
 
             // Verify that the resulting path is inside the root file system path.
             var pathIsAllowed = Path.GetFullPath(physicalPath).StartsWith(_fileSystemPath, StringComparison.OrdinalIgnoreCase);

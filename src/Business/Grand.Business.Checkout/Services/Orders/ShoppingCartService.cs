@@ -6,6 +6,7 @@ using Grand.Business.Checkout.Interfaces.CheckoutAttributes;
 using Grand.Business.Checkout.Interfaces.Orders;
 using Grand.Business.Common.Extensions;
 using Grand.Business.Common.Interfaces.Directory;
+using Grand.Business.Common.Interfaces.Security;
 using Grand.Business.Customers.Interfaces;
 using Grand.Domain.Catalog;
 using Grand.Domain.Common;
@@ -34,6 +35,7 @@ namespace Grand.Business.Checkout.Services.Orders
         private readonly IProductAttributeParser _productAttributeParser;
         private readonly ICheckoutAttributeParser _checkoutAttributeParser;
         private readonly ICustomerService _customerService;
+        private readonly IAclService _aclService;
         private readonly IMediator _mediator;
         private readonly IUserFieldService _userFieldService;
         private readonly IProductReservationService _productReservationService;
@@ -49,6 +51,7 @@ namespace Grand.Business.Checkout.Services.Orders
             IProductAttributeParser productAttributeParser,
             ICheckoutAttributeParser checkoutAttributeParser,
             ICustomerService customerService,
+            IAclService aclService,
             IMediator mediator,
             IUserFieldService userFieldService,
             IProductReservationService productReservationService,
@@ -60,6 +63,7 @@ namespace Grand.Business.Checkout.Services.Orders
             _productAttributeParser = productAttributeParser;
             _checkoutAttributeParser = checkoutAttributeParser;
             _customerService = customerService;
+            _aclService = aclService;
             _mediator = mediator;
             _userFieldService = userFieldService;
             _productReservationService = productReservationService;
@@ -77,17 +81,28 @@ namespace Grand.Business.Checkout.Services.Orders
         /// <param name="storeId">Store identifier; pass null to load all records</param>
         /// <param name="shoppingCartType">Shopping cart type; pass null to load all records</param>
         /// <returns>Shopping Cart</returns>
-        public IList<ShoppingCartItem> GetShoppingCart(string storeId = null, params ShoppingCartType[] shoppingCartType)
+        public virtual async Task<IList<ShoppingCartItem>> GetShoppingCart(string storeId = null, params ShoppingCartType[] shoppingCartType)
         {
-            IEnumerable<ShoppingCartItem> cart = _workContext.CurrentCustomer.ShoppingCartItems;
+            var model = new List<ShoppingCartItem>();
+            var cart = _workContext.CurrentCustomer.ShoppingCartItems.ToList();
 
             if (!string.IsNullOrEmpty(storeId))
-                cart = cart.LimitPerStore(_shoppingCartSettings.SharedCartBetweenStores, storeId);
+                cart = cart.LimitPerStore(_shoppingCartSettings.SharedCartBetweenStores, storeId).ToList();
 
             if (shoppingCartType.Length > 0)
-                cart = cart.Where(sci => shoppingCartType.Contains(sci.ShoppingCartTypeId));
+                cart = cart.Where(sci => shoppingCartType.Contains(sci.ShoppingCartTypeId)).ToList();
 
-            return cart.ToList();
+            foreach (var item in cart)
+            {
+                var product = await _productService.GetProductById(item.ProductId);
+                if (product == null || !product.Published || !_aclService.Authorize(product, _workContext.CurrentCustomer))
+                    continue;
+
+                model.Add(item);
+            }
+
+
+            return model;
         }
 
         /// <summary>
@@ -190,19 +205,22 @@ namespace Grand.Business.Checkout.Services.Orders
         /// <param name="reservationId">ReservationId</param>
         /// <param name="parameter">Parameter for reservation</param>
         /// <param name="duration">Duration for reservation</param>
-        /// <param name="getRequiredProductWarnings">GetRequiredProductWarnings</param>
-        /// <returns>Warnings</returns>
-        public virtual async Task<IList<string>> AddToCart(Customer customer, string productId,
+        /// <param name="validator">ShoppingCartValidatorOptions</param>
+        /// <returns>(warnings, shoppingCartItem)</returns>
+        public virtual async Task<(IList<string> warnings, ShoppingCartItem shoppingCartItem)> AddToCart(Customer customer, string productId,
             ShoppingCartType shoppingCartType, string storeId,
             string warehouseId = null, IList<CustomAttribute> attributes = null,
             double? customerEnteredPrice = null,
             DateTime? rentalStartDate = null, DateTime? rentalEndDate = null,
             int quantity = 1, bool automaticallyAddRequiredProductsIfEnabled = true,
             string reservationId = "", string parameter = "", string duration = "",
-            bool getRequiredProductWarnings = true)
+            ShoppingCartValidatorOptions validator = null)
         {
             if (customer == null)
                 throw new ArgumentNullException(nameof(customer));
+
+            if (validator == null)
+                validator = new ShoppingCartValidatorOptions();
 
             var product = await _productService.GetProductById(productId);
             if (product == null)
@@ -217,7 +235,7 @@ namespace Grand.Business.Checkout.Services.Orders
                 rentalEndDate, quantity, reservationId)).ToList();
 
             if (warnings.Any())
-                return warnings;
+                return (warnings, null);
 
             var shoppingCartItem = await FindShoppingCartItem(cart,
                 shoppingCartType, productId, warehouseId, attributes, customerEnteredPrice,
@@ -229,7 +247,7 @@ namespace Grand.Business.Checkout.Services.Orders
             if (update)
             {
                 shoppingCartItem.Quantity += quantity;
-                warnings.AddRange(await _shoppingCartValidator.GetShoppingCartItemWarnings(customer, shoppingCartItem, product, new ShoppingCartValidatorOptions() { GetRequiredProductWarnings = getRequiredProductWarnings }));
+                warnings.AddRange(await _shoppingCartValidator.GetShoppingCartItemWarnings(customer, shoppingCartItem, product, validator));
             }
             else
             {
@@ -258,9 +276,7 @@ namespace Grand.Business.Checkout.Services.Orders
                 };
 
                 warnings.AddRange(await _shoppingCartValidator.GetShoppingCartItemWarnings
-                    (customer, shoppingCartItem, product,
-                    new ShoppingCartValidatorOptions()
-                    { GetRequiredProductWarnings = getRequiredProductWarnings }));
+                    (customer, shoppingCartItem, product, validator));
             }
 
             if (!warnings.Any())
@@ -281,7 +297,7 @@ namespace Grand.Business.Checkout.Services.Orders
                 await _customerService.ResetCheckoutData(customer, storeId);
             }
 
-            return warnings;
+            return (warnings, shoppingCartItem);
         }
 
         private async Task UpdateExistingShoppingCartItem(ShoppingCartItem shoppingCartItem, Customer customer,
@@ -560,7 +576,8 @@ namespace Grand.Business.Checkout.Services.Orders
                 var sci = fromCart[i];
                 await AddToCart(toCustomer, sci.ProductId, sci.ShoppingCartTypeId, sci.StoreId, sci.WarehouseId,
                     sci.Attributes, sci.EnteredPrice,
-                    sci.RentalStartDateUtc, sci.RentalEndDateUtc, sci.Quantity, false, sci.ReservationId, sci.Parameter, sci.Duration);
+                    sci.RentalStartDateUtc, sci.RentalEndDateUtc, sci.Quantity, false, sci.ReservationId, sci.Parameter, sci.Duration,
+                    new ShoppingCartValidatorOptions());
             }
             for (int i = 0; i < fromCart.Count; i++)
             {

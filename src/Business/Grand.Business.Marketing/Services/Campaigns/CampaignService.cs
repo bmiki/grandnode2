@@ -15,6 +15,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Grand.Infrastructure;
 
 namespace Grand.Business.Marketing.Services.Campaigns
 {
@@ -25,7 +26,6 @@ namespace Grand.Business.Marketing.Services.Campaigns
         private readonly IRepository<NewsLetterSubscription> _newsLetterSubscriptionRepository;
         private readonly IRepository<Customer> _customerRepository;
         private readonly IEmailSender _emailSender;
-        private readonly IMessageTokenProvider _messageTokenProvider;
         private readonly IQueuedEmailService _queuedEmailService;
         private readonly ICustomerService _customerService;
         private readonly IStoreService _storeService;
@@ -33,25 +33,26 @@ namespace Grand.Business.Marketing.Services.Campaigns
         private readonly ICustomerActivityService _customerActivityService;
         private readonly ITranslationService _translationService;
         private readonly ILanguageService _languageService;
+        private readonly IWorkContext _workContext;
 
         public CampaignService(IRepository<Campaign> campaignRepository,
             IRepository<CampaignHistory> campaignHistoryRepository,
             IRepository<NewsLetterSubscription> newsLetterSubscriptionRepository,
             IRepository<Customer> customerRepository,
-            IEmailSender emailSender, IMessageTokenProvider messageTokenProvider,
+            IEmailSender emailSender, 
             IQueuedEmailService queuedEmailService,
             ICustomerService customerService, IStoreService storeService,
             IMediator mediator,
             ICustomerActivityService customerActivityService,
             ITranslationService translationService,
-            ILanguageService languageService)
+            ILanguageService languageService,
+            IWorkContext workContext)
         {
             _campaignRepository = campaignRepository;
             _campaignHistoryRepository = campaignHistoryRepository;
             _newsLetterSubscriptionRepository = newsLetterSubscriptionRepository;
             _customerRepository = customerRepository;
             _emailSender = emailSender;
-            _messageTokenProvider = messageTokenProvider;
             _queuedEmailService = queuedEmailService;
             _storeService = storeService;
             _customerService = customerService;
@@ -59,6 +60,7 @@ namespace Grand.Business.Marketing.Services.Campaigns
             _customerActivityService = customerActivityService;
             _translationService = translationService;
             _languageService = languageService;
+            _workContext = workContext;
         }
 
         /// <summary>
@@ -326,11 +328,11 @@ namespace Grand.Business.Marketing.Services.Campaigns
                     store = (await _storeService.GetAllStores()).FirstOrDefault();
 
                 builder.AddStoreTokens(store, language, emailAccount)
-                       .AddNewsLetterSubscriptionTokens(subscription, store);
+                       .AddNewsLetterSubscriptionTokens(subscription, store, _workContext.CurrentHost);
 
                 if (customer != null)
                 {
-                    builder.AddCustomerTokens(customer, store, language)
+                    builder.AddCustomerTokens(customer, store, _workContext.CurrentHost, language)
                            .AddShoppingCartTokens(customer, store, language);
                 }
 
@@ -350,15 +352,15 @@ namespace Grand.Business.Marketing.Services.Campaigns
                 email.Body = body;
                 email.CreatedOnUtc = DateTime.UtcNow;
                 email.EmailAccountId = emailAccount.Id;
+                email.Reference = Domain.Common.Reference.Campaign;
+                email.ObjectId = campaign.Id;
 
                 await _queuedEmailService.InsertQueuedEmail(email);
                 await InsertCampaignHistory(new CampaignHistory() { CampaignId = campaign.Id, CustomerId = subscription.CustomerId, Email = subscription.Email, CreatedDateUtc = DateTime.UtcNow, StoreId = campaign.StoreId });
 
                 //activity log
                 if (customer != null)
-                    await _customerActivityService.InsertActivity("CustomerReminder.SendCampaign", campaign.Id, _translationService.GetResource("ActivityLog.SendCampaign"), customer, campaign.Name);
-                else
-                    await _customerActivityService.InsertActivity("CustomerReminder.SendCampaign", campaign.Id, _translationService.GetResource("ActivityLog.SendCampaign"), campaign.Name + " - " + subscription.Email);
+                    _ = _customerActivityService.InsertActivity("CustomerReminder.SendCampaign", campaign.Id, customer, "", _translationService.GetResource("ActivityLog.SendCampaign"), campaign.Name);
 
                 totalEmailsSent++;
             }
@@ -392,7 +394,7 @@ namespace Grand.Business.Marketing.Services.Campaigns
             var customer = await _customerService.GetCustomerByEmail(email);
             if (customer != null)
             {
-                builder.AddCustomerTokens(customer, store, language)
+                builder.AddCustomerTokens(customer, store, _workContext.CurrentHost, language)
                        .AddShoppingCartTokens(customer, store, language);
             }
 

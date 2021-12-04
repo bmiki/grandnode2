@@ -11,6 +11,8 @@ namespace Grand.Domain.Stores
         public Store()
         {
             Locales = new List<TranslationEntity>();
+            Domains = new List<DomainHost>();
+            BankAccount = new BankAccount();
         }
 
         /// <summary>
@@ -39,9 +41,9 @@ namespace Grand.Domain.Stores
         public string SecureUrl { get; set; }
 
         /// <summary>
-        /// Gets or sets the comma separated list of possible HTTP_HOST values
+        /// Gets or sets the list of domains
         /// </summary>
-        public string Hosts { get; set; }
+        public IList<DomainHost> Domains { get; set; }
 
         /// <summary>
         /// Gets or sets the identifier of the default language for this store; "" is set when we use the default language display order
@@ -74,6 +76,11 @@ namespace Grand.Domain.Stores
         public string CompanyName { get; set; }
 
         /// <summary>
+        /// Gets or sets the company registration number
+        /// </summary>
+        public string CompanyRegNo { get; set; }
+
+        /// <summary>
         /// Gets or sets the company address
         /// </summary>
         public string CompanyAddress { get; set; }
@@ -102,6 +109,8 @@ namespace Grand.Domain.Stores
         /// Gets or sets the identifier of the default admin theme for this store
         /// </summary>
         public string DefaultAdminTheme { get; set; }
+
+        public BankAccount BankAccount { get; set; }
 
         /// <summary>
         /// Gets or sets the collection of locales

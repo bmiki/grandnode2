@@ -764,6 +764,8 @@ namespace Grand.Web.Controllers
                     Model = null,
                     Address = null,
                     ExcludeProperties = false,
+                    PrePopulateWithCustomerFields = true,
+                    Customer = _workContext.CurrentCustomer,
                     LoadCountries = () => countries
                 })
             };
@@ -774,6 +776,7 @@ namespace Grand.Web.Controllers
         [HttpPost]
         [AutoValidateAntiforgeryToken]
         public virtual async Task<IActionResult> AddressAdd(CustomerAddressEditModel model, IFormCollection form,
+            [FromServices] AddressSettings addressSettings,
             [FromServices] IAddressAttributeParser addressAttributeParser)
         {
             if (!await _groupService.IsRegistered(_workContext.CurrentCustomer))
@@ -791,7 +794,7 @@ namespace Grand.Web.Controllers
 
             if (ModelState.IsValid && ModelState.ErrorCount == 0)
             {
-                var address = model.Address.ToEntity();
+                var address = model.Address.ToEntity(_workContext.CurrentCustomer, addressSettings);
                 address.Attributes = customAttributes;
                 address.CreatedOnUtc = DateTime.UtcNow;
                 customer.Addresses.Add(address);
@@ -808,6 +811,7 @@ namespace Grand.Web.Controllers
                 Model = model.Address,
                 Address = null,
                 ExcludeProperties = true,
+                Customer = _workContext.CurrentCustomer,
                 LoadCountries = () => countries
             });
 
@@ -834,6 +838,7 @@ namespace Grand.Web.Controllers
                 Model = model.Address,
                 Address = address,
                 ExcludeProperties = false,
+                Customer = _workContext.CurrentCustomer,
                 LoadCountries = () => countries
             });
 
@@ -843,6 +848,7 @@ namespace Grand.Web.Controllers
         [HttpPost]
         [AutoValidateAntiforgeryToken]
         public virtual async Task<IActionResult> AddressEdit(CustomerAddressEditModel model, string addressId, IFormCollection form,
+            [FromServices] AddressSettings addressSettings,
             [FromServices] IAddressAttributeParser addressAttributeParser)
         {
             if (!await _groupService.IsRegistered(_workContext.CurrentCustomer))
@@ -865,8 +871,8 @@ namespace Grand.Web.Controllers
 
             if (ModelState.IsValid && ModelState.ErrorCount == 0)
             {
-                address = model.Address.ToEntity(address);
-                address.Attributes = customAttributes;
+                address = model.Address.ToEntity(address, _workContext.CurrentCustomer, addressSettings);
+                address.Attributes = customAttributes;                
                 await _customerService.UpdateAddress(address, customer.Id);
 
                 if (customer.BillingAddress?.Id == address.Id)
@@ -884,6 +890,7 @@ namespace Grand.Web.Controllers
                 Model = model.Address,
                 Address = address,
                 ExcludeProperties = true,
+                Customer = _workContext.CurrentCustomer,
                 LoadCountries = () => countries
             });
 
@@ -1001,10 +1008,13 @@ namespace Grand.Web.Controllers
                     case CustomerLoginResults.Successful:
                         {
                             //delete account 
-                            await _mediator.Send(new DeleteAccountCommand() { Customer = _workContext.CurrentCustomer, Store = _workContext.CurrentStore });
+                            await _mediator.Send(new DeleteAccountCommand() { Customer = _workContext.CurrentCustomer, Store = _workContext.CurrentStore, IpAddress = HttpContext.Connection?.RemoteIpAddress?.ToString(), });
 
                             //standard logout 
                             await _authenticationService.SignOut();
+
+                            //Show successfull message 
+                            Success(_translationService.GetResource("Account.Delete.Success"));
 
                             return RedirectToRoute("HomePage");
                         }

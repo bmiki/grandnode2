@@ -11,7 +11,6 @@ using Grand.Business.Common.Interfaces.Localization;
 using Grand.Business.Customers.Interfaces;
 using Grand.Business.Messages.Commands.Models;
 using Grand.Business.Messages.DotLiquidDrops;
-using Grand.Domain.Catalog;
 using Grand.Domain.Shipping;
 using Grand.Domain.Tax;
 using Grand.Domain.Vendors;
@@ -73,12 +72,12 @@ namespace Grand.Business.System.Commands.Handlers.Messages
             var language = await _languageService.GetLanguageById(request.Order.CustomerLanguageId);
             var currency = await _currencyService.GetCurrencyByCode(request.Order.CustomerCurrencyCode);
 
-            var liquidOrder = new LiquidOrder(request.Order, request.Customer, language, currency, request.Store, request.OrderNote, request.Vendor);
+            var liquidOrder = new LiquidOrder(request.Order, request.Customer, language, currency, request.Store, request.Host, request.OrderNote, request.Vendor);
             foreach (var item in request.Order.OrderItems.Where(x => x.VendorId == request.Vendor?.Id || request.Vendor == null))
             {
                 var product = await _productService.GetProductById(item.ProductId);
                 Vendor vendorItem = string.IsNullOrEmpty(item.VendorId) ? null : await _vendorService.GetVendorById(item.VendorId);
-                var liqitem = new LiquidOrderItem(item, product, language, request.Store, vendorItem);
+                var liqitem = new LiquidOrderItem(item, product, language, request.Store, request.Host, vendorItem);
 
                 #region Download
 
@@ -138,7 +137,6 @@ namespace Grand.Business.System.Commands.Handlers.Messages
 
             var paymentMethod = _paymentService.LoadPaymentMethodBySystemName(request.Order.PaymentMethodSystemName);
             liquidOrder.PaymentMethod = paymentMethod != null ? paymentMethod.FriendlyName : request.Order.PaymentMethodSystemName;
-            liquidOrder.AmountRefunded = _priceFormatter.FormatPrice(request.RefundedAmount, currency, language, false);
 
             var dict = new Dictionary<string, string>();
             foreach (var item in request.Order.OrderTaxes)
@@ -149,13 +147,13 @@ namespace Grand.Business.System.Commands.Handlers.Messages
                 if (string.IsNullOrEmpty(taxRate))
                     taxRate = item.Percent.ToString();
 
-                if(!dict.ContainsKey(taxRate))
+                if (!dict.ContainsKey(taxRate))
                     dict.Add(taxRate, taxValue);
             }
 
             liquidOrder.TaxRates = dict;
 
-            Dictionary<string, string> cards = new Dictionary<string, string>();
+            var cards = new Dictionary<string, string>();
             var gcuhC = await _giftVoucherService.GetAllGiftVoucherUsageHistory(request.Order.Id);
             foreach (var gcuh in gcuhC)
             {

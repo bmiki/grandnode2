@@ -170,7 +170,7 @@ namespace Grand.Web.Admin.Controllers
                 string systemName = null;
                 foreach (var formValue in form.Keys)
                     if (formValue.StartsWith("install-plugin-link-", StringComparison.OrdinalIgnoreCase))
-                        systemName = formValue.Substring("install-plugin-link-".Length);
+                        systemName = formValue["install-plugin-link-".Length..];
 
                 var pluginInfo = PluginManager.ReferencedPlugins.FirstOrDefault(x => x.SystemName == systemName);
                 if (pluginInfo == null)
@@ -192,6 +192,8 @@ namespace Grand.Web.Admin.Controllers
 
                 Success(_translationService.GetResource("Admin.Plugins.Installed"));
 
+                _ = _logger.InsertLog(Domain.Logging.LogLevel.Information, $"The plugin has been installed by the user {_workContext.CurrentCustomer.Email}");
+
                 //stop application
                 _applicationLifetime.StopApplication();
             }
@@ -212,7 +214,7 @@ namespace Grand.Web.Admin.Controllers
                 string systemName = null;
                 foreach (var formValue in form.Keys)
                     if (formValue.StartsWith("uninstall-plugin-link-", StringComparison.OrdinalIgnoreCase))
-                        systemName = formValue.Substring("uninstall-plugin-link-".Length);
+                        systemName = formValue["uninstall-plugin-link-".Length..];
 
                 var pluginInfo = PluginManager.ReferencedPlugins.FirstOrDefault(x => x.SystemName == systemName);
                 if (pluginInfo == null)
@@ -228,6 +230,8 @@ namespace Grand.Web.Admin.Controllers
                 await plugin.Uninstall();
 
                 Success(_translationService.GetResource("Admin.Plugins.Uninstalled"));
+
+                _ = _logger.InsertLog(Domain.Logging.LogLevel.Information, $"The plugin has been uninstalled by the user {_workContext.CurrentCustomer.Email}");
 
                 //stop application
                 _applicationLifetime.StopApplication();
@@ -255,7 +259,7 @@ namespace Grand.Web.Admin.Controllers
                 string systemName = null;
                 foreach (var formValue in form.Keys)
                     if (formValue.StartsWith("remove-plugin-link-", StringComparison.OrdinalIgnoreCase))
-                        systemName = formValue.Substring("remove-plugin-link-".Length);
+                        systemName = formValue["remove-plugin-link-".Length..];
 
                 var pluginInfo = PluginManager.ReferencedPlugins.FirstOrDefault(x => x.SystemName == systemName);
                 if (pluginInfo == null)
@@ -275,6 +279,8 @@ namespace Grand.Web.Admin.Controllers
                 //uninstall plugin
                 Success(_translationService.GetResource("Admin.Plugins.Removed"));
 
+                _ = _logger.InsertLog(Domain.Logging.LogLevel.Information, $"The plugin has been removed by the user {_workContext.CurrentCustomer.Email}");
+
                 //stop application
                 _applicationLifetime.StopApplication();
             }
@@ -288,6 +294,8 @@ namespace Grand.Web.Admin.Controllers
 
         public IActionResult ReloadList()
         {
+            _ = _logger.InsertLog(Domain.Logging.LogLevel.Information, $"Reload list of plugins by the user {_workContext.CurrentCustomer.Email}");
+
             //stop application
             _applicationLifetime.StopApplication();
             return RedirectToAction("List");
@@ -334,6 +342,8 @@ namespace Grand.Web.Admin.Controllers
                 if (!string.IsNullOrEmpty(zipFilePath))
                     System.IO.File.Delete(zipFilePath);
             }
+
+            _ = _logger.InsertLog(Domain.Logging.LogLevel.Information, $"The plugin has been uploaded by the user {_workContext.CurrentCustomer.Email}");
 
             //stop application
             _applicationLifetime.StopApplication();
@@ -436,7 +446,7 @@ namespace Grand.Web.Admin.Controllers
                                     if (pluginInfo.SupportedVersion == GrandVersion.SupportedPluginVersion)
                                     {
                                         supportedVersion = true;
-                                        _fpath = entry.FullName.Substring(0, entry.FullName.LastIndexOf("/"));
+                                        _fpath = entry.FullName[..entry.FullName.LastIndexOf("/")];
                                         archive.Entries.Where(x => !x.FullName.Contains(_fpath)).ToList()
                                         .ForEach(y => { archive.GetEntry(y.FullName).Delete(); });
 
@@ -447,7 +457,7 @@ namespace Grand.Web.Admin.Controllers
                             }
                             catch (Exception ex)
                             {
-                                _logger.Error(ex.Message);
+                                _ = _logger.Error(ex.Message);
                             };
                         }
                     }
@@ -455,7 +465,7 @@ namespace Grand.Web.Admin.Controllers
                         throw new Exception($"This plugin doesn't support the current version - {GrandVersion.SupportedPluginVersion}");
                     else
                     {
-                        var pluginname = _fpath.Substring(_fpath.LastIndexOf('/') + 1);
+                        var pluginname = _fpath[(_fpath.LastIndexOf('/') + 1)..];
                         var _path = "";
 
                         var entries = archive.Entries.ToArray();

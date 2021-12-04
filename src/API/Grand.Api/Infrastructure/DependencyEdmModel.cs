@@ -5,7 +5,7 @@ using Grand.Api.DTOs.Shipping;
 using Grand.Api.Infrastructure.DependencyManagement;
 using Grand.Domain.Catalog;
 using Grand.Infrastructure.Configuration;
-using Microsoft.AspNet.OData.Builder;
+using Microsoft.OData.ModelBuilder;
 using System;
 using System.Collections.Generic;
 
@@ -18,52 +18,45 @@ namespace Grand.Api.Infrastructure
             #region Language model
 
             builder.EntitySet<LanguageDto>("Language");
-            builder.EntityType<LanguageDto>().Count().Filter().OrderBy().Page();
 
             #endregion
 
             #region Currency model
 
             builder.EntitySet<CurrencyDto>("Currency");
-            builder.EntityType<CurrencyDto>().Count().Filter().OrderBy().Page();
 
             #endregion
 
             #region Store model
 
             builder.EntitySet<StoreDto>("Store");
-            builder.EntityType<StoreDto>().Count().Filter().OrderBy().Page();
-
+            
             #endregion
 
             #region Country model
 
             builder.EntitySet<CountryDto>("Country");
-            builder.EntityType<CountryDto>().Count().Filter().OrderBy().Page();
 
             #endregion
 
             #region State province model
 
             builder.EntitySet<StateProvinceDto>("StateProvince");
-            builder.EntityType<StateProvinceDto>().Count().Filter().OrderBy().Page();
-
+            
             #endregion
 
             #region layout model
 
             builder.EntitySet<LayoutDto>("CategoryLayout");
             builder.EntitySet<LayoutDto>("CollectionLayout");
-            builder.EntitySet<LayoutDto>("ProductlLayout");
-            builder.EntitySet<LayoutDto>("BrandlLayout");
-            builder.EntityType<LayoutDto>().Count().Filter().OrderBy().Page();
+            builder.EntitySet<LayoutDto>("ProductLayout");
+            builder.EntitySet<LayoutDto>("BrandLayout");
 
             #endregion
 
             #region Picture model
 
             builder.EntitySet<PictureDto>("Picture");
-            builder.EntityType<PictureDto>().Count().Filter().OrderBy().Page();
 
             #endregion
         }
@@ -71,7 +64,6 @@ namespace Grand.Api.Infrastructure
         {
             builder.EntitySet<ProductDto>("Product");
             var product = builder.EntityType<ProductDto>();
-            product.Count().Filter().OrderBy().Page();
             builder.ComplexType<ProductCategoryDto>();
             builder.ComplexType<ProductCollectionDto>();
             builder.ComplexType<ProductPictureDto>();
@@ -81,6 +73,13 @@ namespace Grand.Api.Infrastructure
             builder.ComplexType<ProductAttributeMappingDto>();
             builder.ComplexType<ProductAttributeValueDto>();
             builder.ComplexType<ProductAttributeCombinationDto>();
+            builder.ComplexType<ProductUpdateStock>();
+            builder.ComplexType<ProductCategoryDeleteDto>();
+            builder.ComplexType<ProductCollectionDeleteDto>();
+            builder.ComplexType<ProductPictureDeleteDto>();
+            builder.ComplexType<ProductSpecificationAttributeDeleteDto>();
+            builder.ComplexType<ProductTierPriceDeleteDto>();
+            builder.ComplexType<ProductAttributeMappingDeleteDto>();
 
             //update stock for product
             ActionConfiguration updateStock = product.Action("UpdateStock");
@@ -126,20 +125,12 @@ namespace Grand.Api.Infrastructure
             #region Product picture
             ActionConfiguration createPicture = product.Action("CreateProductPicture");
             createPicture.Parameter<string>(nameof(ProductPictureDto.PictureId)).Required();
-            createPicture.Parameter<string>(nameof(ProductPictureDto.MimeType)).Required();
-            createPicture.Parameter<string>(nameof(ProductPictureDto.SeoFilename)).Required();
-            createPicture.Parameter<string>(nameof(ProductPictureDto.AltAttribute)).Required();
             createPicture.Parameter<int>(nameof(ProductPictureDto.DisplayOrder)).Required();
-            createPicture.Parameter<string>(nameof(ProductPictureDto.TitleAttribute)).Required();
             createPicture.Returns<bool>();
 
             ActionConfiguration updatePicture = product.Action("UpdateProductPicture");
             updatePicture.Parameter<string>(nameof(ProductPictureDto.PictureId)).Required();
-            updatePicture.Parameter<string>(nameof(ProductPictureDto.MimeType)).Required();
-            updatePicture.Parameter<string>(nameof(ProductPictureDto.SeoFilename)).Required();
-            updatePicture.Parameter<string>(nameof(ProductPictureDto.AltAttribute)).Required();
             updatePicture.Parameter<int>(nameof(ProductPictureDto.DisplayOrder)).Required();
-            updatePicture.Parameter<string>(nameof(ProductPictureDto.TitleAttribute)).Required();
             updatePicture.Returns<bool>();
 
             ActionConfiguration deletePicture = product.Action("DeleteProductPicture");
@@ -246,28 +237,23 @@ namespace Grand.Api.Infrastructure
             #region Category model
 
             builder.EntitySet<CategoryDto>("Category");
-            builder.EntityType<CategoryDto>().Count().Filter().OrderBy().Page();
 
             #endregion
 
             #region Brand model
 
             builder.EntitySet<BrandDto>("Brand");
-            builder.EntityType<BrandDto>().Count().Filter().OrderBy().Page();
 
             #endregion
 
             #region Collection model
 
             builder.EntitySet<CollectionDto>("Collection");
-            builder.EntityType<CollectionDto>().Count().Filter().OrderBy().Page();
-
             #endregion
 
             #region Product attribute model
 
             builder.EntitySet<ProductAttributeDto>("ProductAttribute");
-            builder.EntityType<ProductAttributeDto>().Count().Filter().OrderBy().Page();
             builder.ComplexType<PredefinedProductAttributeValueDto>();
 
             #endregion
@@ -275,7 +261,6 @@ namespace Grand.Api.Infrastructure
             #region Product attribute model
 
             builder.EntitySet<SpecificationAttributeDto>("SpecificationAttribute");
-            builder.EntityType<SpecificationAttributeDto>().Count().Filter().OrderBy().Page();
             builder.ComplexType<SpecificationAttributeOptionDto>();
 
             #endregion
@@ -289,6 +274,8 @@ namespace Grand.Api.Infrastructure
             builder.EntitySet<CustomerDto>("Customer");
             var customer = builder.EntityType<CustomerDto>();
             builder.ComplexType<AddressDto>();
+            builder.ComplexType<DeleteAddressDto>();
+            builder.ComplexType<PasswordDto>();
 
             ActionConfiguration addAddress = customer.Action("AddAddress");
             addAddress.Parameter<string>(nameof(AddressDto.Id)).Required();
@@ -303,7 +290,8 @@ namespace Grand.Api.Infrastructure
             addAddress.Parameter<string>(nameof(AddressDto.FirstName));
             addAddress.Parameter<string>(nameof(AddressDto.VatNumber));
             addAddress.Parameter<string>(nameof(AddressDto.PhoneNumber));
-            addAddress.Parameter<string>(nameof(AddressDto.CustomAttributes));
+            addAddress.Parameter<string>(nameof(AddressDto.Note));
+            addAddress.Parameter<int>(nameof(AddressDto.AddressType));
             addAddress.Parameter<DateTimeOffset>(nameof(AddressDto.CreatedOnUtc));
             addAddress.Parameter<string>(nameof(AddressDto.ZipPostalCode));
             addAddress.Parameter<string>(nameof(AddressDto.StateProvinceId));
@@ -322,18 +310,19 @@ namespace Grand.Api.Infrastructure
             updateAddress.Parameter<string>(nameof(AddressDto.FirstName));
             updateAddress.Parameter<string>(nameof(AddressDto.VatNumber));
             updateAddress.Parameter<string>(nameof(AddressDto.PhoneNumber));
-            updateAddress.Parameter<string>(nameof(AddressDto.CustomAttributes));
+            updateAddress.Parameter<string>(nameof(AddressDto.Note));
+            updateAddress.Parameter<int>(nameof(AddressDto.AddressType));
             updateAddress.Parameter<DateTimeOffset>(nameof(AddressDto.CreatedOnUtc));
             updateAddress.Parameter<string>(nameof(AddressDto.ZipPostalCode));
             updateAddress.Parameter<string>(nameof(AddressDto.StateProvinceId));
             updateAddress.Returns<AddressDto>();
 
             ActionConfiguration deleteAddress = customer.Action("DeleteAddress");
-            deleteAddress.Parameter<string>("addressId");
+            deleteAddress.Parameter<string>(nameof(DeleteAddressDto.AddressId));
             deleteAddress.Returns<bool>();
 
             ActionConfiguration changePassword = customer.Action("SetPassword");
-            changePassword.Parameter<string>("password");
+            changePassword.Parameter<string>(nameof(PasswordDto.Password));
             changePassword.Returns<bool>();
 
             #endregion
@@ -341,15 +330,13 @@ namespace Grand.Api.Infrastructure
             #region Customer group model
 
             builder.EntitySet<CustomerGroupDto>("CustomerGroup");
-            builder.EntityType<CustomerGroupDto>().Count().Filter().OrderBy().Page();
 
             #endregion
 
             #region Vendors
 
             builder.EntitySet<VendorDto>("Vendor");
-            builder.EntityType<VendorDto>().Count().Filter().OrderBy().Page();
-
+            
             #endregion
         }
 
@@ -358,28 +345,24 @@ namespace Grand.Api.Infrastructure
             #region Warehouse model
 
             builder.EntitySet<WarehouseDto>("Warehouse");
-            builder.EntityType<WarehouseDto>().Count().Filter().OrderBy().Page();
-
+            
             #endregion
 
             #region Delivery date model
 
             builder.EntitySet<DeliveryDateDto>("DeliveryDate");
-            builder.EntityType<DeliveryDateDto>().Count().Filter().OrderBy().Page();
-
+            
             #endregion
 
             #region Pickup point model
 
             builder.EntitySet<PickupPointDto>("PickupPoint");
-            builder.EntityType<PickupPointDto>().Count().Filter().OrderBy().Page();
 
             #endregion
 
             #region Shipping method model
 
             builder.EntitySet<ShippingMethodDto>("ShippingMethod");
-            builder.EntityType<ShippingMethodDto>().Count().Filter().OrderBy().Page();
 
             #endregion
         }

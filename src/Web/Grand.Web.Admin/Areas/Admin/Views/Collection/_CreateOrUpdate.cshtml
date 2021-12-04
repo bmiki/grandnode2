@@ -6,7 +6,7 @@
 }
 <div asp-validation-summary="All"></div>
 <input asp-for="Id" type="hidden" />
-<admin-tabstrip name="collection-edit">
+<admin-tabstrip name="collection-edit" BindGrid="true">
     <items>
         <tabstrip-item text="@Loc["Admin.Catalog.Collections.Info"]" tab-index="0">
             <content>
@@ -49,11 +49,7 @@
         <tabstrip-item text="@Loc["Admin.Common.UserFields.Tab"]" tab-index="5">
             <content>
                 <div>
-                    @{
-                        ViewData["ObjectType"] = "Collection";
-                        ViewData["TabIndex"] = 5;
-                    }
-                    <partial name="_UserFields" model="Model" view-data="ViewData" />
+                    <partial name="_UserFields" model="Model" />
                 </div>
             </content>
         </tabstrip-item>

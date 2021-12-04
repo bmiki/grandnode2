@@ -37,6 +37,14 @@ namespace Grand.Web.Common.TagHelpers
                     _resourceManager.RenderHeadScript(output.Content);
                     break;
 
+                case ResourceType.TemplateHeader:
+                    _resourceManager.RenderTemplate(output.Content, true);
+                    break;
+
+                case ResourceType.TemplateFooter:
+                    _resourceManager.RenderTemplate(output.Content, false);
+                    break;
+
                 default:
                     break;
             }

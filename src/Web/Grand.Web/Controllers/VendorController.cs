@@ -7,14 +7,12 @@ using Grand.Business.Messages.Interfaces;
 using Grand.Business.Storage.Extensions;
 using Grand.Business.Storage.Interfaces;
 using Grand.Domain.Common;
-using Grand.Domain.Customers;
 using Grand.Domain.Localization;
 using Grand.Domain.Seo;
 using Grand.Domain.Vendors;
 using Grand.Infrastructure;
 using Grand.SharedKernel.Extensions;
 using Grand.Web.Commands.Models.Vendors;
-using Grand.Web.Common.Controllers;
 using Grand.Web.Common.Filters;
 using Grand.Web.Common.Security.Captcha;
 using Grand.Web.Extensions;
@@ -26,6 +24,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
 using System;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace Grand.Web.Controllers
@@ -122,8 +121,7 @@ namespace Grand.Web.Controllers
             model.TermsOfServiceEnabled = _vendorSettings.TermsOfServiceEnabled;
             model.TermsOfServicePopup = _commonSettings.PopupForTermsOfServiceLinks;
             var countries = await _countryService.GetAllCountries(_workContext.WorkingLanguage.Id, _workContext.CurrentStore.Id);
-            model.Address = await _mediator.Send(new GetVendorAddress()
-            {
+            model.Address = await _mediator.Send(new GetVendorAddress() {
                 Language = _workContext.WorkingLanguage,
                 Address = null,
                 ExcludeProperties = false,
@@ -181,8 +179,7 @@ namespace Grand.Web.Controllers
                 var description = FormatText.ConvertText(model.Description);
                 var address = new Address();
                 //disabled by default
-                var vendor = new Vendor
-                {
+                var vendor = new Vendor {
                     Name = model.Name,
                     Email = model.Email,
                     Description = description,
@@ -230,8 +227,7 @@ namespace Grand.Web.Controllers
             model.TermsOfServicePopup = _commonSettings.PopupForTermsOfServiceLinks;
 
             var countries = await _countryService.GetAllCountries(_workContext.WorkingLanguage.Id, _workContext.CurrentStore.Id);
-            model.Address = await _mediator.Send(new GetVendorAddress()
-            {
+            model.Address = await _mediator.Send(new GetVendorAddress() {
                 Language = _workContext.WorkingLanguage,
                 Address = null,
                 Model = model.Address,
@@ -259,8 +255,7 @@ namespace Grand.Web.Controllers
             model.UserFields = vendor.UserFields;
             model.PictureUrl = await _pictureService.GetPictureUrl(vendor.PictureId);
             var countries = await _countryService.GetAllCountries(_workContext.WorkingLanguage.Id, _workContext.CurrentStore.Id);
-            model.Address = await _mediator.Send(new GetVendorAddress()
-            {
+            model.Address = await _mediator.Send(new GetVendorAddress() {
                 Language = _workContext.WorkingLanguage,
                 Address = vendor.Address,
                 ExcludeProperties = false,
@@ -338,8 +333,7 @@ namespace Grand.Web.Controllers
                 return RedirectToAction("Info");
             }
             var countries = await _countryService.GetAllCountries(_workContext.WorkingLanguage.Id, _workContext.CurrentStore.Id);
-            model.Address = await _mediator.Send(new GetVendorAddress()
-            {
+            model.Address = await _mediator.Send(new GetVendorAddress() {
                 Language = _workContext.WorkingLanguage,
                 Model = model.Address,
                 Address = vendor.Address,
@@ -350,8 +344,7 @@ namespace Grand.Web.Controllers
             return View(model);
         }
 
-        [HttpPost]
-        [AutoValidateAntiforgeryToken]
+        [HttpGet]
         public virtual async Task<IActionResult> RemovePicture()
         {
             if (!await _groupService.IsRegistered(_workContext.CurrentCustomer))
@@ -376,28 +369,6 @@ namespace Grand.Web.Controllers
             return RedirectToAction("Info");
         }
 
-        //contact vendor page
-        public virtual async Task<IActionResult> ContactVendor(string vendorId)
-        {
-            if (!_vendorSettings.AllowCustomersToContactVendors)
-                return RedirectToRoute("HomePage");
-
-            var vendor = await _vendorService.GetVendorById(vendorId);
-            if (vendor == null || !vendor.Active || vendor.Deleted)
-                return RedirectToRoute("HomePage");
-
-            var model = new ContactVendorModel
-            {
-                Email = _workContext.CurrentCustomer.Email,
-                FullName = _workContext.CurrentCustomer.GetFullName(),
-                SubjectEnabled = _commonSettings.SubjectFieldOnContactUsForm,
-                DisplayCaptcha = _captchaSettings.Enabled && _captchaSettings.ShowOnContactUsPage,
-                VendorId = vendor.Id,
-                VendorName = vendor.GetTranslation(x => x.Name, _workContext.WorkingLanguage.Id)
-            };
-
-            return View(model);
-        }
 
         [HttpPost, ActionName("ContactVendor")]
         [AutoValidateAntiforgeryToken]
@@ -405,11 +376,11 @@ namespace Grand.Web.Controllers
         public virtual async Task<IActionResult> ContactVendor(ContactVendorModel model, bool captchaValid)
         {
             if (!_vendorSettings.AllowCustomersToContactVendors)
-                return RedirectToRoute("HomePage");
+                return Content("");
 
             var vendor = await _vendorService.GetVendorById(model.VendorId);
             if (vendor == null || !vendor.Active || vendor.Deleted)
-                return RedirectToRoute("HomePage");
+                return Content("");
 
             //validate CAPTCHA
             if (_captchaSettings.Enabled && _captchaSettings.ShowOnContactUsPage && !captchaValid)
@@ -421,12 +392,15 @@ namespace Grand.Web.Controllers
 
             if (ModelState.IsValid)
             {
-                model = await _mediator.Send(new ContactVendorSendCommand() { Model = model, Vendor = vendor, Store = _workContext.CurrentStore }); ;
-                return View(model);
+                model = await _mediator.Send(new ContactVendorSendCommand() { Model = model, Vendor = vendor, Store = _workContext.CurrentStore, IpAddress = HttpContext.Connection?.RemoteIpAddress?.ToString() });
+                return Json(model);
             }
 
             model.DisplayCaptcha = _captchaSettings.Enabled && _captchaSettings.ShowOnContactUsPage;
-            return View(model);
+            model.Result = string.Join(",", ModelState.Values.SelectMany(v => v.Errors).Select(x => x.ErrorMessage));
+            model.SuccessfullySent = false;
+
+            return Json(model);
         }
         #endregion
     }

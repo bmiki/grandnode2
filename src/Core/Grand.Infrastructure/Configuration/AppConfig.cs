@@ -16,11 +16,11 @@ namespace Grand.Infrastructure.Configuration
         /// Indicates whether we disabled upload plugins/themes
         /// </summary>
         public bool DisableUploadExtensions { get; set; }
-
+       
         /// <summary>
-        /// Indicates whether we should ignore startup tasks
+        /// Indicates whether we should Disable HostedService - BackgroundServiceTask
         /// </summary>
-        public bool IgnoreStartupTasks { get; set; }
+        public bool DisableHostedService { get; set; }
 
         /// <summary>
         /// A value indicating whether to ignore ACL rules (side-wide). It can significantly improve performance when enabled.
@@ -31,6 +31,12 @@ namespace Grand.Infrastructure.Configuration
         /// A value indicating whether to ignore "limit per store" rules (side-wide). It can significantly improve performance when enabled.
         /// </summary>
         public bool IgnoreStoreLimitations { get; set; }
+
+        /// <summary>
+        /// A value indicating whether to ignore the migration process 
+        /// </summary>
+        public bool SkipMigrationProcess { get; set; }
+
 
         /// <summary>
         /// Gets or sets a value indicating whether to clear /Plugins/bin directory on application startup
@@ -232,6 +238,11 @@ namespace Grand.Infrastructure.Configuration
         /// Gets or sets a value indicating whether ignore InstallUrlMiddleware
         /// </summary>
         public bool IgnoreInstallUrlMiddleware { get; set; }
+
+        /// <summary>
+        /// Gets or sets a value indicating whether ignore DbVersionCheckMiddleware
+        /// </summary>
+        public bool IgnoreDbVersionCheckMiddleware { get; set; }
 
         /// <summary>
         /// Gets or sets a value indicating whether ignore IgnoreUsePoweredByMiddleware

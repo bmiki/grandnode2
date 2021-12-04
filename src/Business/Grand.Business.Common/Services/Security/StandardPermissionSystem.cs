@@ -37,6 +37,12 @@ namespace Grand.Business.Common.Services.Security
             Area = "Admin area",
             Category = CategorySystem
         };
+        public static readonly Permission ManageSystem = new Permission {
+            Name = "Manage System",
+            SystemName = PermissionSystemName.System,
+            Area = "Admin area",
+            Category = CategorySystem
+        };
         public static readonly Permission ManageFiles = new Permission
         {
             Name = "Manage Files",
@@ -48,13 +54,6 @@ namespace Grand.Business.Common.Services.Security
         {
             Name = "Manage Pictures",
             SystemName = PermissionSystemName.Pictures,
-            Area = "Admin area",
-            Category = CategorySystem
-        };
-        public static readonly Permission ManageUserFields = new Permission
-        {
-            Name = "Manage user Fields",
-            SystemName = PermissionSystemName.UserFields,
             Area = "Admin area",
             Category = CategorySystem
         };
